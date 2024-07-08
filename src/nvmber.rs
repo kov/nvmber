@@ -50,37 +50,6 @@ impl Nvmber {
         Nvmber::from_str(string.as_ref())
     }
 
-    pub fn from_integer(integer: u64) -> Self {
-        let intstr = integer.to_string();
-        let mut chars = String::new();
-
-        integer.to_string().chars().enumerate().for_each(|(i, c)| {
-            let remaining = intstr.len() - i - 1;
-            let (mono_char, mid_char, top_char) = match remaining {
-                0 => ('I', 'V', 'X'),
-                1 => ('X', 'L', 'C'),
-                2 => ('C', 'D', 'M'),
-                _ => unimplemented!(),
-            };
-            let to_add = match c {
-                n if n == '9' => format!("{}{}", mono_char, top_char),
-                n if n == '8' => format!("{}{}{}{}", mid_char, mono_char, mono_char, mono_char),
-                n if n == '7' => format!("{}{}{}", mid_char, mono_char, mono_char),
-                n if n == '6' => format!("{}{}", mid_char, mono_char),
-                n if n == '5' => format!("{}", mid_char),
-                n if n == '4' => format!("{}{}", mono_char, mid_char),
-                n if n == '3' => format!("{}{}{}", mono_char, mono_char, mono_char),
-                n if n == '2' => format!("{}{}", mono_char, mono_char),
-                n if n == '1' => format!("{}", mono_char),
-                n if n == '0' => format!(""),
-                _ => unimplemented!(),
-            };
-            chars += &to_add;
-        });
-
-        Nvmber { chars, integer }
-    }
-
     #[cfg(test)]
     pub fn get_integer(&self) -> u64 {
         self.integer
@@ -121,7 +90,7 @@ impl Add<&Nvmber> for &Nvmber {
     type Output = Nvmber;
 
     fn add(self, other: &Nvmber) -> Self::Output {
-        Nvmber::from_integer(self.integer + other.integer)
+        (self.integer + other.integer).to_nvmber()
     }
 }
 
@@ -153,7 +122,7 @@ impl Sub<&Nvmber> for &Nvmber {
     type Output = Nvmber;
 
     fn sub(self, other: &Nvmber) -> Self::Output {
-        Nvmber::from_integer(self.integer - other.integer)
+        (self.integer - other.integer).to_nvmber()
     }
 }
 
@@ -200,6 +169,64 @@ impl PartialOrd for Nvmber {
         Some(self.cmp(other))
     }
 }
+
+pub trait ToNvmber {
+    fn to_nvmber(&self) -> Nvmber;
+}
+
+impl ToNvmber for u64 {
+    fn to_nvmber(&self) -> Nvmber {
+        let integer = *self;
+        let intstr = integer.to_string();
+        let mut chars = String::new();
+
+        integer.to_string().chars().enumerate().for_each(|(i, c)| {
+            let remaining = intstr.len() - i - 1;
+            let (mono_char, mid_char, top_char) = match remaining {
+                0 => ('I', 'V', 'X'),
+                1 => ('X', 'L', 'C'),
+                2 => ('C', 'D', 'M'),
+                _ => unimplemented!(),
+            };
+            let to_add = match c {
+                n if n == '9' => format!("{}{}", mono_char, top_char),
+                n if n == '8' => format!("{}{}{}{}", mid_char, mono_char, mono_char, mono_char),
+                n if n == '7' => format!("{}{}{}", mid_char, mono_char, mono_char),
+                n if n == '6' => format!("{}{}", mid_char, mono_char),
+                n if n == '5' => format!("{}", mid_char),
+                n if n == '4' => format!("{}{}", mono_char, mid_char),
+                n if n == '3' => format!("{}{}{}", mono_char, mono_char, mono_char),
+                n if n == '2' => format!("{}{}", mono_char, mono_char),
+                n if n == '1' => format!("{}", mono_char),
+                n if n == '0' => format!(""),
+                _ => unimplemented!(),
+            };
+            chars += &to_add;
+        });
+
+        Nvmber { chars, integer }
+    }
+}
+
+// STOLEN^WHeavily inspired on roman-numerals-rs's ToRoman
+// https://github.com/ferdinandkeller/roman-numerals-rs/blob/master/src/to_roman.rs
+macro_rules! impl_to_nvmber {
+    ($t: tt) => {
+        impl ToNvmber for $t {
+            fn to_nvmber(&self) -> Nvmber {
+                (*self as u64).to_nvmber()
+            }
+        }
+    };
+}
+
+macro_rules! impl_to_nvmber_for_ints {
+    ($($t: ty),+) => {
+        $(impl_to_nvmber!($t);)+
+    };
+}
+
+impl_to_nvmber_for_ints![u8, u16, u32, i8, i16, i32, i64, usize];
 
 #[cfg(test)]
 mod test {
