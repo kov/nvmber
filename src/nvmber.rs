@@ -1,7 +1,16 @@
 use std::{
     fmt::{Debug, Display},
-    ops::{Add, ControlFlow, Sub},
+    ops::{Add, Sub},
+    str::FromStr,
 };
+
+use thiserror::Error as ThisError;
+
+#[derive(ThisError, Debug)]
+pub enum Error {
+    #[error("nvmber too large")]
+    NvmberTooLarge(String),
+}
 
 #[derive(Clone)]
 pub struct Nvmber {
@@ -21,9 +30,24 @@ impl Debug for Nvmber {
     }
 }
 
+fn roman_to_integer(c: &char) -> Result<u64, Error> {
+    let int = match c {
+        '0' => 0,
+        'I' => 1,
+        'V' => 5,
+        'X' => 10,
+        'L' => 50,
+        'C' => 100,
+        'D' => 500,
+        _ => return Err(Error::NvmberTooLarge(format!("{c}"))),
+    };
+
+    Ok(int)
+}
+
 impl Nvmber {
-    pub fn from<S: AsRef<str>>(string: S) -> Option<Self> {
-        Nvmber::parse(string.as_ref())
+    pub fn from<S: AsRef<str>>(string: S) -> Result<Self, Error> {
+        Nvmber::from_str(string.as_ref())
     }
 
     pub fn from_integer(integer: u64) -> Self {
@@ -57,40 +81,39 @@ impl Nvmber {
         Nvmber { chars, integer }
     }
 
-    pub fn parse<S: AsRef<str>>(string: S) -> Option<Self> {
+    #[cfg(test)]
+    pub fn get_integer(&self) -> u64 {
+        self.integer
+    }
+}
+
+impl FromStr for Nvmber {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut integer = 0;
         let mut prev_char = '0';
-        string.as_ref().chars().try_for_each(|c| {
-            let delta = match c {
-                'I' => 1,
-                'V' if prev_char == 'I' => 4 - 1,
-                'V' => 5,
-                'X' if prev_char == 'I' => 9 - 1,
-                'X' => 10,
-                'L' if prev_char == 'X' => 40 - 10,
-                'L' => 50,
-                'C' if prev_char == 'X' => 90 - 10,
-                'C' => 100,
-                'D' if prev_char == 'C' => 400 - 100,
-                'D' => 500,
-                _ => return ControlFlow::Break(c),
-            };
+
+        s.chars().try_for_each(|c| -> Result<_, Error> {
+            let mut delta = roman_to_integer(&c)?;
+
+            // If previous char is a smaller value, this means we have a modifier.
+            let prev = roman_to_integer(&prev_char)?;
+            if prev < delta {
+                delta -= prev * 2; // * 2 because we added it on a previous loop
+            }
 
             integer += delta;
 
             prev_char = c.clone();
 
-            ControlFlow::Continue(())
-        });
-        Some(Nvmber {
-            chars: string.as_ref().to_owned(),
+            Ok(())
+        })?;
+
+        Ok(Nvmber {
+            chars: s.to_owned(),
             integer,
         })
-    }
-
-    #[cfg(test)]
-    pub fn get_integer(&self) -> u64 {
-        self.integer
     }
 }
 
@@ -185,7 +208,7 @@ mod test {
     use rand::seq::SliceRandom;
 
     fn parse_nvmber(x: &str) -> Nvmber {
-        Nvmber::from(x).unwrap_or_else(|| panic!("Failed to parse nvmber {}", x))
+        Nvmber::from(x).unwrap_or_else(|_| panic!("Failed to parse nvmber {}", x))
     }
 
     #[test]
