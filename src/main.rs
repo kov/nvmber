@@ -3,10 +3,6 @@ use nvmber::Nvmber;
 mod nvmber;
 
 fn main() {
-    //let nvmbers = &["III", "IV", "V", "VI", "VII", "IX", "X"];
-    //for n in nvmbers {
-    //println!("{} -> {:?}", n, Nvmber::from(n).unwrap());
-    //}
     let four = Nvmber::from("IV").unwrap();
     let three = Nvmber::from("III").unwrap();
     let two = Nvmber::from("II").unwrap();
