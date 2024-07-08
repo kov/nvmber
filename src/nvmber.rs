@@ -68,7 +68,7 @@ impl Nvmber {
                 'X' => 10,
                 'L' if prev_char == 'X' => 40 - 10,
                 'L' => 50,
-                'C' if prev_char == 'L' => 90 - 10,
+                'C' if prev_char == 'X' => 90 - 10,
                 'C' => 100,
                 'D' if prev_char == 'C' => 400 - 100,
                 'D' => 500,
@@ -85,6 +85,11 @@ impl Nvmber {
             chars: string.as_ref().to_owned(),
             integer,
         })
+    }
+
+    #[cfg(test)]
+    pub fn get_integer(&self) -> u64 {
+        self.integer
     }
 }
 
@@ -149,5 +154,33 @@ impl Sub<&Nvmber> for Nvmber {
 
     fn sub(self, other: &Nvmber) -> Self::Output {
         &self - other
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Nvmber;
+
+    #[test]
+    fn test_nvmbers() {
+        [
+            ("I", 1),
+            ("III", 3),
+            ("IV", 4),
+            ("V", 5),
+            ("X", 10),
+            ("XL", 40),
+            ("L", 50),
+            ("XC", 90),
+            ("C", 100),
+            ("CD", 400),
+            ("D", 500),
+            ("DCLXXVIII", 678),
+        ]
+        .iter()
+        .for_each(|x| {
+            let r = Nvmber::from(x.0).unwrap_or_else(|| panic!("Failed to parse nvmber {}", x.0));
+            assert_eq!(x.1, r.integer);
+        })
     }
 }
