@@ -3,6 +3,7 @@ use std::{
     ops::{Add, ControlFlow, Sub},
 };
 
+#[derive(Clone)]
 pub struct Nvmber {
     chars: String,
     integer: u64,
@@ -157,9 +158,35 @@ impl Sub<&Nvmber> for Nvmber {
     }
 }
 
+impl Eq for Nvmber {}
+
+impl PartialEq for Nvmber {
+    fn eq(&self, other: &Self) -> bool {
+        self.integer == other.integer
+    }
+}
+
+impl Ord for Nvmber {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.integer.cmp(&other.integer)
+    }
+}
+
+impl PartialOrd for Nvmber {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Nvmber;
+
+    use rand::seq::SliceRandom;
+
+    fn parse_nvmber(x: &str) -> Nvmber {
+        Nvmber::from(x).unwrap_or_else(|| panic!("Failed to parse nvmber {}", x))
+    }
 
     #[test]
     fn test_nvmbers() {
@@ -179,8 +206,28 @@ mod test {
         ]
         .iter()
         .for_each(|x| {
-            let r = Nvmber::from(x.0).unwrap_or_else(|| panic!("Failed to parse nvmber {}", x.0));
+            let r = parse_nvmber(x.0);
             assert_eq!(x.1, r.integer);
         })
+    }
+
+    #[test]
+    fn test_ordering() {
+        let nvmbers: Vec<Nvmber> = ["I", "III", "IV", "V", "XV", "XVII", "L", "C", "CD", "D"]
+            .iter()
+            .map(|x| parse_nvmber(x))
+            .collect();
+
+        // Scramble the nvmbers, and make sure they have indeed been moved around.
+        let mut scrambled = nvmbers.clone();
+        scrambled.shuffle(&mut rand::thread_rng());
+
+        assert_ne!(nvmbers, scrambled);
+
+        // Now sort and check we get the expected ordering.
+        let mut sorted = scrambled;
+        sorted.sort();
+
+        assert_eq!(nvmbers, sorted);
     }
 }
