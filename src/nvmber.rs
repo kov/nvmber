@@ -10,6 +10,9 @@ use thiserror::Error as ThisError;
 pub enum Error {
     #[error("nvmber too large")]
     NvmberTooLarge(String),
+
+    #[error("malformed")]
+    Malformed(String),
 }
 
 #[derive(Clone)]
@@ -61,20 +64,69 @@ impl FromStr for Nvmber {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut integer = 0;
-        let mut prev_char = '0';
+        let mut prev_char: Option<char> = None;
+        let mut repeats = 0;
+        let mut prev_modifier: Option<char> = None;
 
         s.chars().try_for_each(|c| -> Result<_, Error> {
             let mut delta = roman_to_integer(&c)?;
 
-            // If previous char is a smaller value, this means we have a modifier.
-            let prev = roman_to_integer(&prev_char)?;
-            if prev < delta {
-                delta -= prev * 2; // * 2 because we added it on a previous loop
+            if let Some(prev_char) = prev_char {
+                // If previous char is a smaller value, this means we have a modifier.
+                let prev = roman_to_integer(&prev_char)?;
+                if prev < delta {
+                    if repeats > 0 {
+                        return Err(Error::Malformed(format!(
+                            "Roman {prev_char} used as modifier to {c}, but appears more than once"
+                        )));
+                    }
+
+                    let allowed_modifiers = [
+                        ('V', 'I'),
+                        ('X', 'I'),
+                        ('L', 'X'),
+                        ('C', 'X'),
+                        ('D', 'C'),
+                        ('M', 'C'),
+                    ];
+                    if !allowed_modifiers.contains(&(c, prev_char)) {
+                        return Err(Error::Malformed(format!(
+                            "Roman {c} does not allow {prev_char} as a modifier"
+                        )));
+                    }
+
+                    prev_modifier.replace(prev_char);
+
+                    delta -= prev * 2; // * 2 because we added it on a previous loop
+                }
+
+                // Check for disallowed repeats.
+                if c == prev_char {
+                    repeats += 1;
+                } else {
+                    repeats = 0;
+                }
+
+                if repeats == 1 && ['V', 'L', 'D'].contains(&c) {
+                    return Err(Error::Malformed(format!("{} appeared twice", c)));
+                } else if repeats > 2 {
+                    return Err(Error::Malformed(format!(
+                        "{} appeared over 3 times in a row",
+                        c
+                    )));
+                }
+
+                // Check for trying to increase number that had a modifier.
+                if let Some(prev_modifier) = prev_modifier {
+                    if prev_modifier == c {
+                        return Err(Error::Malformed(format!("Trying to increase {prev_char} with {c}, but had one before as modifier")));
+                    }
+                }
             }
 
             integer += delta;
 
-            prev_char = c.clone();
+            prev_char.replace(c.clone());
 
             Ok(())
         })?;
@@ -230,7 +282,7 @@ impl_to_nvmber_for_ints![u8, u16, u32, i8, i16, i32, i64, usize];
 
 #[cfg(test)]
 mod test {
-    use super::Nvmber;
+    use super::{Error, Nvmber};
 
     use rand::seq::SliceRandom;
 
@@ -279,5 +331,16 @@ mod test {
         sorted.sort();
 
         assert_eq!(nvmbers, sorted);
+    }
+
+    #[test]
+    fn test_malformed() {
+        ["IIII", "VV", "VX", "IL", "XIIV", "XD", "CDC"]
+            .iter()
+            .for_each(|s| {
+                if !matches!(Nvmber::from(s), Err(Error::Malformed(..))) {
+                    panic!("Expected error for malformed string '{}', but it parsed", s)
+                };
+            });
     }
 }
