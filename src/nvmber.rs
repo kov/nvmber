@@ -138,11 +138,23 @@ impl FromStr for Nvmber {
     }
 }
 
+#[inline]
+fn clamp_and_convert(v: u64) -> Nvmber {
+    let mut v = v;
+
+    if v > 3999 {
+        v = 3999
+    }
+
+    v.to_nvmber()
+        .expect("This should never happen, overflow on arithmetic?")
+}
+
 impl Add<&Nvmber> for &Nvmber {
     type Output = Nvmber;
 
     fn add(self, other: &Nvmber) -> Self::Output {
-        (self.integer + other.integer).to_nvmber()
+        clamp_and_convert(self.integer + other.integer)
     }
 }
 
@@ -174,7 +186,7 @@ impl Sub<&Nvmber> for &Nvmber {
     type Output = Nvmber;
 
     fn sub(self, other: &Nvmber) -> Self::Output {
-        (self.integer - other.integer).to_nvmber()
+        clamp_and_convert(self.integer - other.integer)
     }
 }
 
@@ -223,12 +235,20 @@ impl PartialOrd for Nvmber {
 }
 
 pub trait ToNvmber {
-    fn to_nvmber(&self) -> Nvmber;
+    fn to_nvmber(&self) -> Result<Nvmber, Error>;
 }
 
 impl ToNvmber for u64 {
-    fn to_nvmber(&self) -> Nvmber {
+    fn to_nvmber(&self) -> Result<Nvmber, Error> {
         let integer = *self;
+
+        if integer > 3999 {
+            return Err(Error::NvmberTooLarge(format!(
+                "Nvmber can only go up to 3,999, but {} was attempted",
+                *self
+            )));
+        }
+
         let intstr = integer.to_string();
         let mut chars = String::new();
 
@@ -238,6 +258,7 @@ impl ToNvmber for u64 {
                 0 => ('I', 'V', 'X'),
                 1 => ('X', 'L', 'C'),
                 2 => ('C', 'D', 'M'),
+                3 => ('M', '0', '0'),
                 _ => unimplemented!(),
             };
             let to_add = match c {
@@ -256,7 +277,7 @@ impl ToNvmber for u64 {
             chars += &to_add;
         });
 
-        Nvmber { chars, integer }
+        Ok(Nvmber { chars, integer })
     }
 }
 
@@ -265,7 +286,7 @@ impl ToNvmber for u64 {
 macro_rules! impl_to_nvmber {
     ($t: tt) => {
         impl ToNvmber for $t {
-            fn to_nvmber(&self) -> Nvmber {
+            fn to_nvmber(&self) -> Result<Nvmber, Error> {
                 (*self as u64).to_nvmber()
             }
         }
@@ -282,6 +303,8 @@ impl_to_nvmber_for_ints![u8, u16, u32, i8, i16, i32, i64, usize];
 
 #[cfg(test)]
 mod test {
+    use crate::nvmber::ToNvmber;
+
     use super::{Error, Nvmber};
 
     use rand::seq::SliceRandom;
@@ -342,5 +365,16 @@ mod test {
                     panic!("Expected error for malformed string '{}', but it parsed", s)
                 };
             });
+    }
+
+    #[test]
+    fn test_nvmber_too_large() {
+        assert!(3999.to_nvmber().is_ok());
+
+        [4000, 10000].iter().for_each(|n| {
+            if !matches!(n.to_nvmber(), Err(Error::NvmberTooLarge(..))) {
+                panic!("Expected error for {} being too large, but got OK", n)
+            }
+        });
     }
 }
