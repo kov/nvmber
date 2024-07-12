@@ -126,6 +126,10 @@ impl FromStr for Nvmber {
 
             integer += delta;
 
+            if integer > 3999 {
+                return Err(Error::NvmberTooLarge(format!("Nvmber got too large while parsing {}", s)));
+            }
+
             prev_char.replace(c.clone());
 
             Ok(())
@@ -376,5 +380,10 @@ mod test {
                 panic!("Expected error for {} being too large, but got OK", n)
             }
         });
+
+        // FIXME: this should actually be a parse error.
+        if !matches!(Nvmber::from("MMMCMXCXXII"), Err(Error::NvmberTooLarge(..))) {
+            panic!("Expected an error for too large a string");
+        }
     }
 }
