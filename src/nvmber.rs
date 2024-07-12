@@ -386,4 +386,19 @@ mod test {
             panic!("Expected an error for too large a string");
         }
     }
+
+    #[test]
+    fn test_arithmetic_overflow() {
+        // Overflows, stays at the maximum.
+        assert_eq!(
+            3999.to_nvmber().unwrap() + 10.to_nvmber().unwrap(),
+            3999.to_nvmber().unwrap()
+        );
+
+        // No overflow.
+        assert_eq!(
+            3988.to_nvmber().unwrap() + 10.to_nvmber().unwrap(),
+            3998.to_nvmber().unwrap()
+        );
+    }
 }
