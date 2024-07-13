@@ -307,9 +307,7 @@ impl_to_nvmber_for_ints![u8, u16, u32, i8, i16, i32, i64, usize];
 
 #[cfg(test)]
 mod test {
-    use crate::nvmber::ToNvmber;
-
-    use super::{Error, Nvmber};
+    use super::{Error, Nvmber, ToNvmber};
 
     use rand::seq::SliceRandom;
 
