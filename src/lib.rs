@@ -42,6 +42,7 @@ fn roman_to_integer(c: &char) -> Result<u64, Error> {
         'L' => 50,
         'C' => 100,
         'D' => 500,
+        'M' => 1000,
         _ => return Err(Error::NvmberTooLarge(format!("{c}"))),
     };
 
@@ -359,8 +360,15 @@ mod test {
     }
 
     #[test]
+    fn test_from_str() {
+        ["I", "XV", "MDC"]
+            .iter()
+            .for_each(|s| assert!(Nvmber::from(s).is_ok()));
+    }
+
+    #[test]
     fn test_malformed() {
-        ["IIII", "VV", "VX", "IL", "XIIV", "XD", "CDC"]
+        ["IIII", "VV", "VX", "IL", "XIIV", "XD", "CDC", "MMMCMXCXXII"]
             .iter()
             .for_each(|s| {
                 if !matches!(Nvmber::from(s), Err(Error::Malformed(..))) {
@@ -378,11 +386,6 @@ mod test {
                 panic!("Expected error for {} being too large, but got OK", n)
             }
         });
-
-        // FIXME: this should actually be a parse error.
-        if !matches!(Nvmber::from("MMMCMXCXXII"), Err(Error::NvmberTooLarge(..))) {
-            panic!("Expected an error for too large a string");
-        }
     }
 
     #[test]
