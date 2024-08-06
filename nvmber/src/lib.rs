@@ -245,7 +245,6 @@ impl Nvmber {
         Nvmber::from_str(string.as_ref())
     }
 
-    #[cfg(test)]
     pub fn get_integer(&self) -> i64 {
         self.integer
     }
